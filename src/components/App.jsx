@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { Searchbar } from './Searchbar/Searchbar';
@@ -7,32 +7,20 @@ import { ImageGallery } from './ImageGallery/ImageGallery';
 import { fetchImages } from '../services/pixabayAPI';
 import { LoaderSkeleton } from './Loader/LoaderSkeleton';
 import { Button } from './Button/button';
-//import Modal from './Modal/';
 
-class App extends Component {
-  state = {
-    searchQuery: '',
-    page: 1,
-    images: [],
-    error: null,
-    isLoaded: false,
-    isModalOpen: false,
-    largeImageURL: null,
-    totalPages: null,
-  };
+const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [images, setImages] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState(null);
+  const [totalPages, setTotalPages] = useState(null);
 
-  async componentDidUpdate(_, prevState) {
-    const { searchQuery, page, totalPages, error } = this.state;
-
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
-      if (searchQuery === '') {
-        toast.error(
-          `Sorry, there are no images matching your search query ${searchQuery}. Please try again.`
-        );
-        return;
-      }
-      this.setState({ isLoaded: true, error: null });
+  useEffect(() => {
+    async function getImages() {
       try {
+        setIsLoaded(true);
         const searchImages = await fetchImages(searchQuery, page, totalPages);
 
         if (searchImages.totalPages < 1) {
@@ -42,24 +30,21 @@ class App extends Component {
           return;
         }
 
-        this.setState(prevState => {
-          return {
-            images: [...prevState.images, ...searchImages.images],
-          };
-        });
-        this.setState({ totalPages: searchImages.totalPages });
+        setImages(prevState => [...prevState, ...searchImages.images]);
+        setTotalPages(searchImages.totalPages);
       } catch {
-        this.setState({ error: error.message });
         toast.error(
           `Sorry, there are no images matching your search query ${searchQuery}. Please try again.`
         );
       } finally {
-        this.setState({ isLoaded: false });
+        setIsLoaded(false);
       }
     }
-  }
 
-  handleSubmit = e => {
+    getImages();
+  }, [page, searchQuery, totalPages]);
+
+  const handleSubmit = e => {
     e.preventDefault();
     const inputQuery = e.target.elements.query.value.trim().toLowerCase();
 
@@ -68,60 +53,50 @@ class App extends Component {
       return;
     }
 
-    this.setState({ searchQuery: inputQuery, page: 1, images: [] });
+    setSearchQuery(inputQuery);
+    setPage(1);
+    setImages([]);
   };
 
-  handleLoadMoreImages = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMoreImages = () => {
+    setPage(prevState => prevState + 1);
   };
 
-  openModal = () => {
-    this.setState({ isModalOpen: true });
+  const openModal = () => {
+    setIsModalOpen(true);
   };
 
-  closeModal = () => {
-    this.setState({ isModalOpen: false });
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
-  handleModal = url => {
-    this.setState({ largeImageURL: url });
+  const handleModal = url => {
+    setLargeImageURL(url);
   };
 
-  render() {
-    const {
-      searchQuery,
-      images,
-      isLoaded,
-      page,
-      totalPages,
-      largeImageURL,
-      isModalOpen,
-    } = this.state;
+  return (
+    <>
+      <Searchbar onSubmit={handleSubmit} />
+      <Toaster position="bottom-right" />
+      {searchQuery && (
+        <ImageGallery
+          imageItems={images}
+          onModal={openModal}
+          onHandleModal={handleModal}
+        />
+      )}
 
-    return (
-      <>
-        <Searchbar onSubmit={this.handleSubmit} />
-        <Toaster position="bottom-right" />
-        {searchQuery && (
-          <ImageGallery
-            imageItems={images}
-            onModal={this.openModal}
-            onHandleModal={this.handleModal}
-          />
-        )}
-
-        {isLoaded && <LoaderSkeleton />}
-        {totalPages > 1 && totalPages > page && (
-          <Button onLoadMore={this.handleLoadMoreImages}>Load more</Button>
-        )}
-        {isModalOpen && (
-          <Modal onCloseModal={this.closeModal}>
-            <img src={largeImageURL} alt="" />
-          </Modal>
-        )}
-      </>
-    );
-  }
-}
+      {searchQuery && isLoaded && <LoaderSkeleton />}
+      {searchQuery && totalPages > 1 && totalPages > page && (
+        <Button onLoadMore={handleLoadMoreImages}>Load more</Button>
+      )}
+      {isModalOpen && (
+        <Modal onCloseModal={closeModal}>
+          <img src={largeImageURL} alt="" width="768" />
+        </Modal>
+      )}
+    </>
+  );
+};
 
 export default App;
