@@ -21,7 +21,7 @@ const App = () => {
     async function getImages() {
       try {
         setIsLoaded(true);
-        const searchImages = await fetchImages(searchQuery, page, totalPages);
+        const searchImages = await fetchImages(searchQuery, page);
 
         if (searchImages.totalPages < 1) {
           toast.error(
@@ -42,7 +42,7 @@ const App = () => {
     }
 
     getImages();
-  }, [page, searchQuery, totalPages]);
+  }, [page, searchQuery]);
 
   const handleSubmit = e => {
     e.preventDefault();
